@@ -3,27 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moving Ball</title>
+    <title>MazeMover</title>
     <style>
-        canvas {
-            border: 5px solid black;
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
+    <h1>MazeMover</h1>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const CELL_SIZE = 40;
+        const MAZE_LAYOUT = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,2,0,1,0,0,1,0,0,1],
+            [1,0,0,1,0,1,1,0,1,1],
+            [1,1,0,0,0,0,0,0,0,1],
+            [1,0,0,1,1,1,0,1,0,1],
+            [1,0,1,1,0,0,0,1,0,1],
+            [1,0,0,0,0,1,0,1,0,1],
+            [1,1,1,1,0,1,0,1,0,1],
+            [1,0,0,0,0,1,0,0,3,1],
+            [1,1,1,1,1,1,1,1,1,1]
+        ];
 
         const ball = {
-            x: 200,
-            y: 200,
-            radius: 15,
+            x: CELL_SIZE * 1.5,
+            y: CELL_SIZE * 1.5,
+            radius: CELL_SIZE/4,
             dx: 0,
             dy: 0,
-            speed: 5
+            speed: 3
         };
+
+        let isGameActive = true;
+
+        function drawMaze() {
+            MAZE_LAYOUT.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    ctx.fillStyle = 
+                        cell === 1 ? '#333' : 
+                        cell === 2 ? 'green' :
+                        cell === 3 ? 'red' : 
+                        '#fff';
+                    ctx.fillRect(x*CELL_SIZE, y*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                });
+            });
+        }
 
         function drawBall() {
             ctx.beginPath();
@@ -33,50 +77,66 @@
             ctx.closePath();
         }
 
+        function checkCollision(newX, newY) {
+            const cellX = Math.floor(newX / CELL_SIZE);
+            const cellY = Math.floor(newY / CELL_SIZE);
+            
+            // Check boundaries
+            if (cellX < 0 || cellY < 0 || cellX >= MAZE_LAYOUT[0].length || cellY >= MAZE_LAYOUT.length) 
+                return true;
+            
+            // Check walls
+            return MAZE_LAYOUT[cellY][cellX] === 1;
+        }
+
+        function checkVictory() {
+            const endCell = MAZE_LAYOUT.flat().indexOf(3);
+            const endX = (endCell % MAZE_LAYOUT[0].length) * CELL_SIZE + CELL_SIZE/2;
+            const endY = Math.floor(endCell / MAZE_LAYOUT[0].length) * CELL_SIZE + CELL_SIZE/2;
+            
+            return Math.abs(ball.x - endX) < CELL_SIZE/2 && 
+                   Math.abs(ball.y - endY) < CELL_SIZE/2;
+        }
+
         function update() {
+            if (!isGameActive) return;
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMaze();
 
-            // Update ball position
-            ball.x += ball.dx;
-            ball.y += ball.dy;
+            const newX = ball.x + ball.dx;
+            const newY = ball.y + ball.dy;
 
-            // Boundary checks
-            if (ball.x - ball.radius < 0) ball.x = ball.radius;
-            if (ball.x + ball.radius > canvas.width) ball.x = canvas.width - ball.radius;
-            if (ball.y - ball.radius < 0) ball.y = ball.radius;
-            if (ball.y + ball.radius > canvas.height) ball.y = canvas.height - ball.radius;
+            if (!checkCollision(newX, ball.y)) ball.x = newX;
+            if (!checkCollision(ball.x, newY)) ball.y = newY;
+
+            if (checkVictory()) {
+                isGameActive = false;
+                alert('Congratulations! You reached the end!');
+                return;
+            }
 
             drawBall();
             requestAnimationFrame(update);
         }
 
-        document.addEventListener('keydown', (event) => {
-            switch(event.key) {
-                case 'ArrowLeft':
-                    ball.dx = -ball.speed;
-                    break;
-                case 'ArrowRight':
-                    ball.dx = ball.speed;
-                    break;
-                case 'ArrowUp':
-                    ball.dy = -ball.speed;
-                    break;
-                case 'ArrowDown':
-                    ball.dy = ball.speed;
-                    break;
+        document.addEventListener('keydown', (e) => {
+            if (!isGameActive) return;
+
+            switch(e.key) {
+                case 'ArrowLeft': ball.dx = -ball.speed; break;
+                case 'ArrowRight': ball.dx = ball.speed; break;
+                case 'ArrowUp': ball.dy = -ball.speed; break;
+                case 'ArrowDown': ball.dy = ball.speed; break;
             }
         });
 
-        document.addEventListener('keyup', (event) => {
-            switch(event.key) {
+        document.addEventListener('keyup', (e) => {
+            switch(e.key) {
                 case 'ArrowLeft':
-                case 'ArrowRight':
-                    ball.dx = 0;
-                    break;
+                case 'ArrowRight': ball.dx = 0; break;
                 case 'ArrowUp':
-                case 'ArrowDown':
-                    ball.dy = 0;
-                    break;
+                case 'ArrowDown': ball.dy = 0; break;
             }
         });
 
